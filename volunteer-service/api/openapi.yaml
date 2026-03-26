@@ -1,0 +1,160 @@
+openapi: 3.0.3
+info:
+  title: Volunteer Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8082
+paths:
+  /volunteers:
+    get:
+      summary: List volunteers
+      responses:
+        '200':
+          description: Volunteers retrieved
+    post:
+      summary: Create volunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VolunteerInput'
+      responses:
+        '201':
+          description: Volunteer created
+  /volunteers/{id}:
+    get:
+      summary: Get volunteer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Volunteer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolunteerResponse'
+        '404':
+          description: Volunteer not found
+    put:
+      summary: Update volunteer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVolunteerRequest'
+      responses:
+        '200':
+          description: Volunteer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolunteerResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Volunteer not found
+    delete:
+      summary: Delete volunteer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Volunteer deleted successfully
+        '404':
+          description: Volunteer not found
+  /volunteers/{id}/assign:
+    put:
+      summary: Assign volunteer to incident
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignVolunteerRequest'
+      responses:
+        '200':
+          description: Volunteer assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignVolunteerResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Volunteer not found
+        '409':
+          description: Volunteer not available
+components:
+  schemas:
+    VolunteerInput:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        phone:
+          type: string
+      required: [name, role, phone]
+    UpdateVolunteerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        phone:
+          type: string
+      required: [name, role, phone]
+    VolunteerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+    AssignVolunteerRequest:
+      type: object
+      properties:
+        incidentId:
+          type: integer
+        role:
+          type: string
+      required: [incidentId]
+    AssignVolunteerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        assignedTo:
+          type: integer
+        status:
+          type: string
