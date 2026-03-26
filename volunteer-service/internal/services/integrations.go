@@ -64,11 +64,15 @@ func (v *HTTPIncidentVerifier) GetIncident(incidentID int) (models.IncidentSumma
 		return models.IncidentSummary{}, err
 	}
 
+	if strings.EqualFold(strings.TrimSpace(incident.Status), "RESOLVED") {
+		return models.IncidentSummary{}, ErrIncidentResolved
+	}
+
 	return incident, nil
 }
 
 func (c *HTTPLogisticsChecker) GetAssignment(volunteerID int) (models.LogisticsAssignment, error) {
-	url := fmt.Sprintf("%s/volunteers/%d", c.baseURL, volunteerID)
+	url := fmt.Sprintf("%s/trips/volunteer/%d", c.baseURL, volunteerID)
 
 	resp, err := c.client.Get(url)
 	if err != nil {
@@ -85,19 +89,16 @@ func (c *HTTPLogisticsChecker) GetAssignment(volunteerID int) (models.LogisticsA
 	}
 
 	var payload struct {
-		VolunteerID       int   `json:"volunteerId"`
-		AssignedToVehicle *bool `json:"assignedToVehicle"`
-		Assigned          *bool `json:"assigned"`
+		VolunteerID   int   `json:"volunteerId"`
+		HasActiveTrip *bool `json:"hasActiveTrip"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return models.LogisticsAssignment{}, err
 	}
 
-	assigned := false
-	if payload.AssignedToVehicle != nil {
-		assigned = *payload.AssignedToVehicle
-	} else if payload.Assigned != nil {
-		assigned = *payload.Assigned
+	hasActive := false
+	if payload.HasActiveTrip != nil {
+		hasActive = *payload.HasActiveTrip
 	}
 
 	if payload.VolunteerID == 0 {
@@ -105,7 +106,7 @@ func (c *HTTPLogisticsChecker) GetAssignment(volunteerID int) (models.LogisticsA
 	}
 
 	return models.LogisticsAssignment{
-		VolunteerID:       payload.VolunteerID,
-		AssignedToVehicle: assigned,
+		VolunteerID:   payload.VolunteerID,
+		HasActiveTrip: hasActive,
 	}, nil
 }

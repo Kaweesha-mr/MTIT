@@ -13,9 +13,9 @@ var (
 	ErrValidation            = errors.New("validation failed")
 	ErrIncidentUnavailable   = errors.New("incident unavailable")
 	ErrIncidentResolved      = errors.New("incident resolved")
-	ErrVehicleNotAssigned    = errors.New("volunteer not assigned to vehicle")
 	ErrLogisticsUnavailable  = errors.New("logistics information unavailable")
 	ErrInvalidVolunteerState = errors.New("volunteer is not available")
+	ErrVolunteerBusy         = errors.New("volunteer already has active trip")
 )
 
 var phoneRegex = regexp.MustCompile(`^0[0-9]{9}$`)
@@ -24,6 +24,7 @@ var allowedRoles = map[string]struct{}{
 	"DOCTOR": {},
 	"DRIVER": {},
 	"RESCUE": {},
+	"LEADER": {},
 }
 
 type VolunteerService struct {
@@ -84,6 +85,43 @@ func (s *VolunteerService) GetByID(id int) (models.Volunteer, error) {
 	return s.repository.GetByID(id)
 }
 
+func (s *VolunteerService) List() ([]models.Volunteer, error) {
+	return s.repository.List()
+}
+
+func (s *VolunteerService) UpdateVolunteer(id int, req models.UpdateVolunteerRequest) (models.Volunteer, error) {
+	name := strings.TrimSpace(req.Name)
+	role := strings.ToUpper(strings.TrimSpace(req.Role))
+	phone := strings.TrimSpace(req.Phone)
+
+	if name == "" || role == "" || phone == "" {
+		return models.Volunteer{}, ErrValidation
+	}
+
+	if _, ok := allowedRoles[role]; !ok {
+		return models.Volunteer{}, ErrValidation
+	}
+
+	if !phoneRegex.MatchString(phone) {
+		return models.Volunteer{}, ErrValidation
+	}
+
+	volunteer, err := s.repository.GetByID(id)
+	if err != nil {
+		return models.Volunteer{}, err
+	}
+
+	volunteer.Name = name
+	volunteer.Role = role
+	volunteer.Phone = phone
+
+	return s.repository.Update(volunteer)
+}
+
+func (s *VolunteerService) DeleteVolunteer(id int) error {
+	return s.repository.Delete(id)
+}
+
 func (s *VolunteerService) Assign(volunteerID int, incidentID int) (models.AssignVolunteerResponse, error) {
 	if incidentID <= 0 {
 		return models.AssignVolunteerResponse{}, ErrValidation
@@ -118,11 +156,11 @@ func (s *VolunteerService) Assign(volunteerID int, incidentID int) (models.Assig
 		return models.AssignVolunteerResponse{}, err
 	}
 
-	if !assignment.AssignedToVehicle {
-		return models.AssignVolunteerResponse{}, ErrVehicleNotAssigned
+	if assignment.HasActiveTrip {
+		return models.AssignVolunteerResponse{}, ErrVolunteerBusy
 	}
 
-	volunteer.Status = "ASSIGNED"
+	volunteer.Status = "BUSY"
 	volunteer.AssignedIncidentID = &incidentID
 
 	if _, err := s.repository.Update(volunteer); err != nil {
@@ -130,9 +168,8 @@ func (s *VolunteerService) Assign(volunteerID int, incidentID int) (models.Assig
 	}
 
 	return models.AssignVolunteerResponse{
-		VolunteerID: volunteer.ID,
-		IncidentID:  incidentID,
-		Status:      volunteer.Status,
-		Message:     "Volunteer assigned successfully",
+		ID:         volunteer.ID,
+		AssignedTo: incidentID,
+		Status:     "BUSY",
 	}, nil
 }
