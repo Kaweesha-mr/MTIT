@@ -14,10 +14,9 @@ Default port is `8082` and can be overridden with `PORT`.
 
 - `PORT` (default: `8082`)
 - `INCIDENT_SERVICE_URL` (default: `http://localhost:8081`)
-- `LOGISTICS_SERVICE_URL` (default: `http://localhost:8083/logistics`)
-- `USE_DB` (default: `false`; set `true` to enable PostgreSQL)
+- `LOGISTICS_SERVICE_URL` (default: `http://localhost:8086`)
 - `DB_HOST` (default: `localhost`)
-- `DB_PORT` (default: `5432`; use `5434` when using local Docker compose)
+- `DB_PORT` (default: `5434` for the provided Docker Compose database)
 - `DB_USER` (default: `volunteer_user`)
 - `DB_PASSWORD` (default: `volunteer_pass`)
 - `DB_NAME` (default: `volunteers_db`)
@@ -31,13 +30,11 @@ Start the Volunteer database:
 docker compose up -d
 ```
 
-Run service with DB enabled:
+Run the service (PostgreSQL is required; it will fail fast if the DB is unreachable):
 
 ```bash
-USE_DB=true DB_HOST=localhost DB_PORT=5434 go run ./cmd/server
+DB_HOST=localhost DB_PORT=5434 go run ./cmd/server
 ```
-
-If `USE_DB=true` and DB connection fails, the service falls back to in-memory storage and logs a warning.
 
 ## Endpoints
 
