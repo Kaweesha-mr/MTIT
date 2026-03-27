@@ -1,0 +1,258 @@
+openapi: 3.0.3
+info:
+  title: Shelter Service API
+  version: 1.0.0
+  description: Shelter management service for Disaster Relief Coordination System.
+servers:
+  - url: http://localhost:8084
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /shelters:
+    get:
+      summary: List all shelters
+      responses:
+        '200':
+          description: List of shelters retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShelterListItem'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new shelter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShelterRequest'
+      responses:
+        '201':
+          description: Shelter created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShelterCreateResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Incident service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /shelters/{id}:
+    get:
+      summary: Get shelter by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Shelter retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShelterResponse'
+        '404':
+          description: Shelter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a shelter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShelterRequest'
+      responses:
+        '200':
+          description: Shelter updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShelterResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shelter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a shelter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Shelter deleted successfully
+        '404':
+          description: Shelter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /shelters/{id}/capacity:
+    put:
+      summary: Update shelter occupancy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOccupancyRequest'
+      responses:
+        '200':
+          description: Occupancy updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  occupancy:
+                    type: integer
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shelter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    CreateShelterRequest:
+      type: object
+      required: [incidentId, name, capacity]
+      properties:
+        incidentId:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: Community Center
+        capacity:
+          type: integer
+          example: 150
+    UpdateShelterRequest:
+      type: object
+      required: [name, capacity]
+      properties:
+        name:
+          type: string
+          example: Community Center
+        capacity:
+          type: integer
+          example: 150
+    UpdateOccupancyRequest:
+      type: object
+      required: [currentOccupancy]
+      properties:
+        currentOccupancy:
+          type: integer
+          example: 45
+    ShelterListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 301
+        name:
+          type: string
+          example: Community Center
+        status:
+          type: string
+          example: OPEN
+    ShelterResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 301
+        name:
+          type: string
+          example: Community Center
+        capacity:
+          type: integer
+          example: 150
+        status:
+          type: string
+          example: OPEN
+        currentOccupancy:
+          type: integer
+          example: 45
+    ShelterCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 301
+        name:
+          type: string
+          example: Community Center
+        status:
+          type: string
+          example: OPEN
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid shelter id
