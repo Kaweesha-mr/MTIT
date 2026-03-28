@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
   title: Incident Service API
-  version: 0.1.0
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
 paths:
   /health:
     get:
@@ -10,8 +12,155 @@ paths:
         '200':
           description: OK
   /incidents:
+    post:
+      summary: Report new disaster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncidentRequest'
+      responses:
+        '201':
+          description: Incident created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateIncidentResponse'
+        '400':
+          description: Validation error
     get:
-      summary: List incidents
+      summary: List active disasters
       responses:
         '200':
-          description: List of incidents
+          description: List of active incidents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Incident'
+  /incidents/{id}:
+    get:
+      summary: Get incident details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Incident details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentLookupResponse'
+        '404':
+          description: Incident not found
+  /incidents/{id}/status:
+    put:
+      summary: Mark incident as resolved or update status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIncidentStatusRequest'
+      responses:
+        '200':
+          description: Incident status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateIncidentStatusResponse'
+        '404':
+          description: Incident not found
+
+components:
+  schemas:
+    CreateIncidentRequest:
+      type: object
+      required:
+        - type
+        - location
+        - severity
+      properties:
+        type:
+          type: string
+          example: FLOOD
+        location:
+          type: string
+          example: Kelaniya
+        severity:
+          type: string
+          example: HIGH
+    CreateIncidentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        type:
+          type: string
+          example: FLOOD
+        status:
+          type: string
+          example: ACTIVE
+        message:
+          type: string
+          example: Incident Reported Successfully
+    Incident:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        type:
+          type: string
+          example: FLOOD
+        location:
+          type: string
+          example: Kelaniya
+        severity:
+          type: string
+          example: HIGH
+        status:
+          type: string
+          example: ACTIVE
+    IncidentLookupResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        location:
+          type: string
+          example: Kelaniya
+        status:
+          type: string
+          example: ACTIVE
+    UpdateIncidentStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          example: RESOLVED
+    UpdateIncidentStatusResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        status:
+          type: string
+          example: RESOLVED
+        message:
+          type: string
+          example: Incident status updated
