@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -11,6 +12,10 @@ import (
 
 type PostgresVolunteerRepository struct {
 	db *sql.DB
+}
+
+func (r *PostgresVolunteerRepository) Ping(ctx context.Context) error {
+	return r.db.PingContext(ctx)
 }
 
 func NewPostgresVolunteerRepository(dsn string) (*PostgresVolunteerRepository, error) {
@@ -159,4 +164,60 @@ func (r *PostgresVolunteerRepository) Update(volunteer models.Volunteer) (models
 	}
 
 	return volunteer, nil
+}
+
+func (r *PostgresVolunteerRepository) List() ([]models.Volunteer, error) {
+	const q = `
+	SELECT id, name, role, phone, status, license_valid, assigned_incident_id
+	FROM volunteers
+	ORDER BY id;
+	`
+
+	rows, err := r.db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.Volunteer
+	for rows.Next() {
+		var v models.Volunteer
+		var assigned sql.NullInt64
+		if err := rows.Scan(&v.ID, &v.Name, &v.Role, &v.Phone, &v.Status, &v.LicenseValid, &assigned); err != nil {
+			return nil, err
+		}
+		if assigned.Valid {
+			id := int(assigned.Int64)
+			v.AssignedIncidentID = &id
+		}
+		result = append(result, v)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *PostgresVolunteerRepository) Delete(id int) error {
+	const q = `
+	DELETE FROM volunteers
+	WHERE id = $1;
+	`
+
+	res, err := r.db.Exec(q, id)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrVolunteerNotFound
+	}
+
+	return nil
 }
