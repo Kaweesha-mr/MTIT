@@ -23,15 +23,21 @@ type CreateVolunteerResponse struct {
 	Status string `json:"status"`
 }
 
+type UpdateVolunteerRequest struct {
+	Name   string `json:"name"`
+	Role   string `json:"role"`
+	Phone  string `json:"phone"`
+}
+
 type AssignVolunteerRequest struct {
-	IncidentID int `json:"incidentId"`
+	IncidentID int    `json:"incidentId"`
+	Role       string `json:"role,omitempty"`
 }
 
 type AssignVolunteerResponse struct {
-	VolunteerID int    `json:"volunteerId"`
-	IncidentID  int    `json:"incidentId"`
-	Status      string `json:"status"`
-	Message     string `json:"message"`
+	ID         int    `json:"id"`
+	AssignedTo int    `json:"assignedTo"`
+	Status     string `json:"status"`
 }
 
 type IncidentSummary struct {
@@ -40,6 +46,6 @@ type IncidentSummary struct {
 }
 
 type LogisticsAssignment struct {
-	VolunteerID       int  `json:"volunteerId"`
-	AssignedToVehicle bool `json:"assignedToVehicle"`
+	VolunteerID   int  `json:"volunteerId"`
+	HasActiveTrip bool `json:"hasActiveTrip"`
 }
