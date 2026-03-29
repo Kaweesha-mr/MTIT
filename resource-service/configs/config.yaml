@@ -1,0 +1,7 @@
+server:
+  port: 8083
+database:
+  dbName: resource_db
+  collectionName: resources
+external:
+  shelterServiceUrl: http://localhost:8084
