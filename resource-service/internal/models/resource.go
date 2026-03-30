@@ -33,7 +33,8 @@ type DispatchRequest struct {
 type Shelter struct {
 	ID               int    `json:"id"`
 	Name             string `json:"name"`
-	CurrentOccupancy int    `json:"currentOccupancy"`
-	MaxCapacity      int    `json:"maxCapacity"`
+	CurrentOccupancy int    `json:"currentOccupancy,omitempty"`
+	MaxCapacity      int    `json:"maxCapacity,omitempty"`
+	Capacity         int    `json:"capacity,omitempty"`
 	Status           string `json:"status"`
 }
