@@ -57,6 +57,10 @@ func (s *AlertService) GetByID(id int) (models.AlertDetailResponse, error) {
 	}, nil
 }
 
+func (s *AlertService) GetAll() ([]models.Alert, error) {
+	return s.repository.GetAll()
+}
+
 func (s *AlertService) Update(id int, req models.UpdateAlertRequest) (models.Alert, error) {
 	if strings.TrimSpace(req.Message) == "" || strings.TrimSpace(req.Severity) == "" {
 		return models.Alert{}, ErrValidation

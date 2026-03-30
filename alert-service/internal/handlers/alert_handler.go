@@ -28,29 +28,40 @@ func (h *AlertHandler) Health(w http.ResponseWriter, _ *http.Request) {
 func (h *AlertHandler) AlertsCollection(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	var req models.CreateAlertRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid request payload")
-		return
-	}
-
-	res, err := h.service.Create(req)
-	if err != nil {
-		if err == services.ErrValidation {
-			h.writeError(w, http.StatusBadRequest, "incidentId, message and severity are required")
+	switch r.Method {
+	case http.MethodGet:
+		alerts, err := h.service.GetAll()
+		if err != nil {
+			h.writeError(w, http.StatusInternalServerError, "failed to fetch alerts")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, "failed to create alert")
-		return
-	}
 
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(res)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(alerts)
+
+	case http.MethodPost:
+		var req models.CreateAlertRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.writeError(w, http.StatusBadRequest, "invalid request payload")
+			return
+		}
+
+		res, err := h.service.Create(req)
+		if err != nil {
+			if err == services.ErrValidation {
+				h.writeError(w, http.StatusBadRequest, "incidentId, message and severity are required")
+				return
+			}
+			h.writeError(w, http.StatusInternalServerError, "failed to create alert")
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(res)
+
+	default:
+		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
 }
 
 func (h *AlertHandler) AlertByID(w http.ResponseWriter, r *http.Request) {

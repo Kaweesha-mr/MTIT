@@ -15,6 +15,18 @@ paths:
           description: OK
 
   /alerts:
+    get:
+      summary: Get all alerts
+      responses:
+        '200':
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+
     post:
       summary: Create alert
       requestBody:

@@ -11,6 +11,7 @@ var ErrAlertNotFound = errors.New("alert not found")
 
 type AlertRepository interface {
 	Create(alert models.Alert) (models.Alert, error)
+	GetAll() ([]models.Alert, error)
 	GetByID(id int) (models.Alert, error)
 	Update(id int, req models.UpdateAlertRequest) (models.Alert, error)
 	Delete(id int) error
@@ -72,6 +73,42 @@ func (r *PostgresAlertRepository) GetByID(id int) (models.Alert, error) {
 	}
 
 	return alert, nil
+}
+
+func (r *PostgresAlertRepository) GetAll() ([]models.Alert, error) {
+	query := `
+		SELECT id, incident_id, message, severity, status, timestamp
+		FROM alerts
+		ORDER BY id ASC
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	alerts := make([]models.Alert, 0)
+	for rows.Next() {
+		var alert models.Alert
+		if err := rows.Scan(
+			&alert.ID,
+			&alert.IncidentID,
+			&alert.Message,
+			&alert.Severity,
+			&alert.Status,
+			&alert.Timestamp,
+		); err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, alert)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return alerts, nil
 }
 
 func (r *PostgresAlertRepository) Update(id int, req models.UpdateAlertRequest) (models.Alert, error) {

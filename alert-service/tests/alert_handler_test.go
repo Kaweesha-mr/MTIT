@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"alert-service/internal/handlers"
@@ -30,6 +31,16 @@ func (m *mockAlertRepository) Create(alert models.Alert) (models.Alert, error) {
 	m.nextID++
 	m.store[alert.ID] = alert
 	return alert, nil
+}
+
+func (m *mockAlertRepository) GetAll() ([]models.Alert, error) {
+	alerts := make([]models.Alert, 0, len(m.store))
+	for i := 1; i < m.nextID; i++ {
+		if alert, ok := m.store[i]; ok {
+			alerts = append(alerts, alert)
+		}
+	}
+	return alerts, nil
 }
 
 func (m *mockAlertRepository) GetByID(id int) (models.Alert, error) {
@@ -105,5 +116,35 @@ func TestGetAlertInvalidID(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestGetAllAlerts(t *testing.T) {
+	h := setupHandler()
+
+	body := `{"incidentId":101,"message":"Evacuate Immediately","severity":"HIGH"}`
+	createReq := httptest.NewRequest(http.MethodPost, "/alerts", strings.NewReader(body))
+	createW := httptest.NewRecorder()
+	h.AlertsCollection(createW, createReq)
+
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("expected %d, got %d", http.StatusCreated, createW.Code)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/alerts", nil)
+	getW := httptest.NewRecorder()
+	h.AlertsCollection(getW, getReq)
+
+	if getW.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, getW.Code)
+	}
+
+	var alerts []models.Alert
+	if err := json.Unmarshal(getW.Body.Bytes(), &alerts); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(alerts) == 0 {
+		t.Fatal("expected at least one alert")
 	}
 }
