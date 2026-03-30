@@ -1,0 +1,9 @@
+server:
+  port: 8085
+database:
+  host: localhost
+  port: 5432
+  user: alert_user
+  password: alert_pass
+  name: alerts_db
+  sslmode: disable
