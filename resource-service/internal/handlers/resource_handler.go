@@ -32,6 +32,8 @@ func (h *ResourceHandler) Resources(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		h.createResource(w, r)
+	case http.MethodGet:
+		h.listResources(w, r)
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
@@ -52,11 +54,17 @@ func (h *ResourceHandler) ResourceByID(w http.ResponseWriter, r *http.Request) {
 		}
 		h.getResource(w, r, id)
 	case http.MethodPut:
-		if !isDispatchPath {
+		if isDispatchPath {
+			h.dispatchResource(w, r, id)
+		} else {
+			h.updateResource(w, r, id)
+		}
+	case http.MethodDelete:
+		if isDispatchPath {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		h.dispatchResource(w, r, id)
+		h.deleteResource(w, r, id)
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
@@ -107,17 +115,71 @@ func (h *ResourceHandler) dispatchResource(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	resource, shelter, err := h.service.DispatchResource(r.Context(), id, req)
+	resource, _, err := h.service.DispatchResource(r.Context(), id, req)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"resourceId": resource.ID,
-		"status":     resource.Status,
-		"message":    fmt.Sprintf("Resources dispatched successfully to shelter %d", shelter.ID),
+		"id":     resource.ID,
+		"status": resource.Status,
 	})
+}
+
+func (h *ResourceHandler) updateResource(w http.ResponseWriter, r *http.Request, id int) {
+	defer r.Body.Close()
+
+	var req models.CreateResourceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	resource, err := h.service.UpdateResource(r.Context(), id, req)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":        resource.ID,
+		"item":      resource.Item,
+		"quantity":  resource.Quantity,
+		"unit":      resource.Unit,
+		"available": resource.Available,
+		"weight":    resource.Weight,
+		"status":    resource.Status,
+	})
+}
+
+func (h *ResourceHandler) deleteResource(w http.ResponseWriter, r *http.Request, id int) {
+	err := h.service.DeleteResource(r.Context(), id)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusNoContent, nil)
+}
+
+func (h *ResourceHandler) listResources(w http.ResponseWriter, r *http.Request) {
+	resources, err := h.service.ListResources(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list resources")
+		return
+	}
+
+	resp := make([]map[string]any, 0, len(resources))
+	for _, res := range resources {
+		resp = append(resp, map[string]any{
+			"id":        res.ID,
+			"item":      res.Item,
+			"available": res.Available,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *ResourceHandler) handleServiceError(w http.ResponseWriter, err error) {
