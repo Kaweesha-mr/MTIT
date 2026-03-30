@@ -49,6 +49,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: List all resources
+      responses:
+        '200':
+          description: List of resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListResourceResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /resources/{id}:
     get:
@@ -68,6 +85,68 @@ paths:
                 $ref: '#/components/schemas/GetResourceResponse'
         '404':
           description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a resource
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '200':
+          description: Resource updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateResourceResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a resource
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -155,6 +234,19 @@ components:
           type: integer
           example: 500
 
+    ListResourceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 701
+        item:
+          type: string
+          example: WATER_BOTTLES
+        available:
+          type: integer
+          example: 500
+
     GetResourceResponse:
       type: object
       properties:
@@ -167,6 +259,31 @@ components:
         weight:
           type: string
           example: 500kg
+
+    UpdateResourceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 701
+        item:
+          type: string
+          example: WATER_BOTTLES
+        quantity:
+          type: integer
+          example: 500
+        unit:
+          type: string
+          example: PACKS
+        available:
+          type: integer
+          example: 500
+        weight:
+          type: string
+          example: 500kg
+        status:
+          type: string
+          example: AVAILABLE
 
     DispatchRequest:
       type: object

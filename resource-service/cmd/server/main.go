@@ -18,6 +18,7 @@ import (
 )
 
 func main() {
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
