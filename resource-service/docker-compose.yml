@@ -1,0 +1,27 @@
+services:
+  resource-mongo:
+    image: mongo:6
+    container_name: resource-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_root
+      MONGO_INITDB_ROOT_PASSWORD: mongo_pass
+    ports:
+      - "27017:27017"
+    volumes:
+      - resource_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--username", "mongo_root", "--password", "mongo_pass", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - resource-network
+
+volumes:
+  resource_mongo_data:
+
+networks:
+  resource-network:
+    driver: bridge

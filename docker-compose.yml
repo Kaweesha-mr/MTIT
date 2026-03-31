@@ -1,0 +1,319 @@
+
+services:
+  # ============================================
+  # DATABASES
+  # ============================================
+  # PostgreSQL - Volunteer Service
+  volunteer-db:
+    image: postgres:16-alpine
+    container_name: mtit_volunteer_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: volunteers_db
+      POSTGRES_USER: volunteer_user
+      POSTGRES_PASSWORD: volunteer_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - volunteer_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U volunteer_user -d volunteers_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # PostgreSQL - Shelter Service
+  shelter-db:
+    image: postgres:16-alpine
+    container_name: mtit_shelter_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shelters_db
+      POSTGRES_USER: shelter_user
+      POSTGRES_PASSWORD: shelter_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - shelter_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shelter_user -d shelters_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # PostgreSQL - Incident Service
+  incident-db:
+    image: postgres:16-alpine
+    container_name: mtit_incident_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: incidents_db
+      POSTGRES_USER: incident_user
+      POSTGRES_PASSWORD: incident_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - incident_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incident_user -d incidents_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # PostgreSQL - Alert Service
+  alert-db:
+    image: postgres:16-alpine
+    container_name: mtit_alert_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alerts_db
+      POSTGRES_USER: alert_user
+      POSTGRES_PASSWORD: alert_pass
+    ports:
+      - "5437:5432"
+    volumes:
+      - alert_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alert_user -d alerts_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # MongoDB - Resource & Fleet Services
+  mongodb:
+    image: mongo:7
+    container_name: mtit_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_root
+      MONGO_INITDB_ROOT_PASSWORD: mongo_pass
+      MONGO_INITDB_DATABASE: resource_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # Redis - Gateway Caching
+  redis:
+    image: redis:7-alpine
+    container_name: mtit_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtit-network
+
+  # ============================================
+  # MICROSERVICES
+  # ============================================
+
+  # Auth Service (Go)
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: mtit_auth_service
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    env_file:
+      - ./auth-service/.env
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Incident Service (Go)
+  incident-service:
+    build:
+      context: ./incident-service
+      dockerfile: Dockerfile
+    container_name: mtit_incident_service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./incident-service/.env
+    depends_on:
+      incident-db:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Volunteer Service (Go)
+  volunteer-service:
+    build:
+      context: ./volunteer-service
+      dockerfile: Dockerfile
+    container_name: mtit_volunteer_service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./volunteer-service/.env
+    depends_on:
+      volunteer-db:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Alert Service (Go)
+  alert-service:
+    build:
+      context: ./alert-service
+      dockerfile: Dockerfile
+    container_name: mtit_alert_service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    env_file:
+      - ./alert-service/.env
+    depends_on:
+      alert-db:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Resource Service (Go)
+  resource-service:
+    build:
+      context: ./resource-service
+      dockerfile: Dockerfile
+    container_name: mtit_resource_service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    env_file:
+      - ./resource-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Gateway (Go)
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: mtit_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./gateway/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Fleet Service (Python)
+  fleet-service:
+    build:
+      context: ./fleet-service
+      dockerfile: Dockerfile
+    container_name: mtit_fleet_service
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    env_file:
+      - ./fleet-service/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Shelter Service (Node.js)
+  shelter-service:
+    build:
+      context: ./shelter-service
+      dockerfile: Dockerfile
+    container_name: mtit_shelter_service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    env_file:
+      - ./shelter-service/.env
+    depends_on:
+      shelter-db:
+        condition: service_healthy
+    networks:
+      - mtit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  volunteer_db_data:
+  shelter_db_data:
+  incident_db_data:
+  alert_db_data:
+  mongodb_data:
+  mongodb_config:
+  redis_data:
+
+networks:
+  mtit-network:
+    driver: bridge
