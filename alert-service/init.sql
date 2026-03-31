@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS alerts (
+	id SERIAL PRIMARY KEY,
+	incident_id INT NOT NULL,
+	message TEXT NOT NULL,
+	severity VARCHAR(20) NOT NULL,
+	status VARCHAR(30) NOT NULL,
+	timestamp TIMESTAMP NOT NULL
+);

@@ -1,0 +1,183 @@
+openapi: 3.0.3
+info:
+  title: Alert Service API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8085
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+
+  /alerts:
+    get:
+      summary: Get all alerts
+      responses:
+        '200':
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+
+    post:
+      summary: Create alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRequest'
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAlertResponse'
+        '400':
+          description: Validation error
+
+  /alerts/{id}:
+    get:
+      summary: Get alert by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertDetailResponse'
+        '404':
+          description: Alert not found
+
+    put:
+      summary: Update alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAlertRequest'
+      responses:
+        '200':
+          description: Alert updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+
+    delete:
+      summary: Delete alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert deleted
+        '404':
+          description: Alert not found
+
+components:
+  schemas:
+    CreateAlertRequest:
+      type: object
+      required:
+        - incidentId
+        - message
+        - severity
+      properties:
+        incidentId:
+          type: integer
+          example: 101
+        message:
+          type: string
+          example: Evacuate Immediately
+        severity:
+          type: string
+          example: HIGH
+
+    CreateAlertResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 901
+        status:
+          type: string
+          example: BROADCASTED
+        timestamp:
+          type: string
+          example: 2023-10-27T10:00:00Z
+
+    UpdateAlertRequest:
+      type: object
+      required:
+        - message
+        - severity
+      properties:
+        message:
+          type: string
+          example: Evacuate to safe area immediately
+        severity:
+          type: string
+          example: HIGH
+
+    AlertDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 901
+        message:
+          type: string
+          example: Evacuate Immediately
+        status:
+          type: string
+          example: BROADCASTED
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 901
+        incidentId:
+          type: integer
+          example: 101
+        message:
+          type: string
+          example: Evacuate Immediately
+        severity:
+          type: string
+          example: HIGH
+        status:
+          type: string
+          example: BROADCASTED
+        timestamp:
+          type: string
+          example: 2023-10-27T10:00:00Z
