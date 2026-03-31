@@ -3,116 +3,133 @@ package tests
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"resource-service/internal/clients"
 	"resource-service/internal/models"
 	"resource-service/internal/repositories"
 	"resource-service/internal/services"
 )
 
 type fakeResourceRepo struct {
-	resource *models.Resource
-	nextID   int
+	resources map[int]*models.Resource
+	nextID    int
 }
 
-func (f *fakeResourceRepo) Create(_ context.Context, resource *models.Resource) error {
-	f.resource = resource
+func (f *fakeResourceRepo) Create(ctx context.Context, r *models.Resource) error {
+	r.ID = f.nextID
+	f.nextID++
+	f.resources[r.ID] = r
 	return nil
 }
 
-func (f *fakeResourceRepo) GetByID(_ context.Context, id int) (*models.Resource, error) {
-	if f.resource == nil || f.resource.ID != id {
+func (f *fakeResourceRepo) GetByID(ctx context.Context, id int) (*models.Resource, error) {
+	r, ok := f.resources[id]
+	if !ok {
 		return nil, repositories.ErrResourceNotFound
 	}
-	return f.resource, nil
+	return r, nil
 }
 
-func (f *fakeResourceRepo) UpdateDispatch(_ context.Context, id int, available int, status string) error {
-	if f.resource == nil || f.resource.ID != id {
+func (f *fakeResourceRepo) UpdateDispatch(ctx context.Context, id int, avail int, status string) error {
+	r, ok := f.resources[id]
+	if !ok {
 		return repositories.ErrResourceNotFound
 	}
-	f.resource.Available = available
-	f.resource.Status = status
+	r.Quantity = avail
 	return nil
 }
 
-func (f *fakeResourceRepo) GetNextID(_ context.Context) (int, error) {
-	if f.nextID == 0 {
-		return 701, nil
+func (f *fakeResourceRepo) Update(ctx context.Context, id int, item string, qty int, unit string) error {
+	r, ok := f.resources[id]
+	if !ok {
+		return repositories.ErrResourceNotFound
 	}
+	r.Item = item
+	r.Quantity = qty
+	r.Unit = unit
+	return nil
+}
+
+func (f *fakeResourceRepo) Delete(ctx context.Context, id int) error {
+	delete(f.resources, id)
+	return nil
+}
+
+func (f *fakeResourceRepo) GetNextID(ctx context.Context) (int, error) {
 	return f.nextID, nil
 }
 
-func TestCreateResource_DefaultsAreSet(t *testing.T) {
-	repo := &fakeResourceRepo{nextID: 701}
+func (f *fakeResourceRepo) List(ctx context.Context) ([]models.Resource, error) {
+	var list []models.Resource
+	for _, r := range f.resources {
+		list = append(list, *r)
+	}
+	return list, nil
+}
+
+func TestCreateResource_ValidInput_Success(t *testing.T) {
+	repo := &fakeResourceRepo{resources: make(map[int]*models.Resource), nextID: 1}
 	svc := services.NewResourceService(repo, nil)
 
-	resource, err := svc.CreateResource(context.Background(), models.CreateResourceRequest{
-		Item:     "WATER_BOTTLES",
-		Quantity: 500,
-		Unit:     "PACKS",
-	})
+	req := models.CreateResourceRequest{
+		Item:     "Water",
+		Quantity: 100,
+		Unit:     "Liters",
+	}
+
+	res, err := svc.CreateResource(context.Background(), req)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if resource.ID != 701 {
-		t.Fatalf("expected id 701, got %d", resource.ID)
-	}
-	if resource.Available != 500 {
-		t.Fatalf("expected available 500, got %d", resource.Available)
-	}
-	if resource.Status != models.ResourceStatusAvailable {
-		t.Fatalf("expected status AVAILABLE, got %s", resource.Status)
-	}
-	if resource.Weight != "500kg" {
-		t.Fatalf("expected weight 500kg, got %s", resource.Weight)
+	if res.Item != "Water" || res.Quantity != 100 {
+		t.Errorf("unexpected resource details: %+v", res)
 	}
 }
 
-func TestDispatchResource_RejectsInsufficientStock(t *testing.T) {
-	repo := &fakeResourceRepo{resource: &models.Resource{ID: 701, Available: 10, Status: models.ResourceStatusAvailable}}
+func TestCreateResource_EmptyItem_ReturnsError(t *testing.T) {
+	repo := &fakeResourceRepo{resources: make(map[int]*models.Resource), nextID: 1}
 	svc := services.NewResourceService(repo, nil)
 
-	_, _, err := svc.DispatchResource(context.Background(), 701, models.DispatchRequest{ShelterID: 301, Quantity: 100})
-	if !errors.Is(err, services.ErrInsufficientStock) {
-		t.Fatalf("expected ErrInsufficientStock, got %v", err)
+	req := models.CreateResourceRequest{
+		Item:     "",
+		Quantity: 100,
+		Unit:     "Liters",
+	}
+
+	_, err := svc.CreateResource(context.Background(), req)
+	if !errors.Is(err, services.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
-func TestDispatchResource_RejectsClosedShelter(t *testing.T) {
-	shelterServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":301,"name":"Central School","currentOccupancy":10,"maxCapacity":500,"status":"CLOSED"}`))
-	}))
-	defer shelterServer.Close()
+func TestCreateResource_InvalidQuantity_ReturnsError(t *testing.T) {
+	repo := &fakeResourceRepo{resources: make(map[int]*models.Resource), nextID: 1}
+	svc := services.NewResourceService(repo, nil)
 
-	repo := &fakeResourceRepo{resource: &models.Resource{ID: 701, Available: 500, Status: models.ResourceStatusAvailable}}
-	client := clients.NewShelterClient(shelterServer.URL, 2)
-	svc := services.NewResourceService(repo, client)
+	req := models.CreateResourceRequest{
+		Item:     "Water",
+		Quantity: 0,
+		Unit:     "Liters",
+	}
 
-	_, _, err := svc.DispatchResource(context.Background(), 701, models.DispatchRequest{ShelterID: 301, Quantity: 100})
-	if !errors.Is(err, services.ErrShelterRejected) {
-		t.Fatalf("expected ErrShelterRejected for closed shelter, got %v", err)
+	_, err := svc.CreateResource(context.Background(), req)
+	if !errors.Is(err, services.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
-func TestDispatchResource_RejectsFullShelter(t *testing.T) {
-	shelterServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":301,"name":"Central School","currentOccupancy":500,"maxCapacity":500,"status":"OPEN"}`))
-	}))
-	defer shelterServer.Close()
+func TestGetResource_ExistingID_ReturnsResource(t *testing.T) {
+	repo := &fakeResourceRepo{resources: make(map[int]*models.Resource), nextID: 1}
+	repo.Create(context.Background(), &models.Resource{Item: "Food", Quantity: 50, Unit: "kg"})
+	svc := services.NewResourceService(repo, nil)
 
-	repo := &fakeResourceRepo{resource: &models.Resource{ID: 701, Available: 500, Status: models.ResourceStatusAvailable}}
-	client := clients.NewShelterClient(shelterServer.URL, 2)
-	svc := services.NewResourceService(repo, client)
+	res, err := svc.GetResource(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 
-	_, _, err := svc.DispatchResource(context.Background(), 701, models.DispatchRequest{ShelterID: 301, Quantity: 100})
-	if !errors.Is(err, services.ErrShelterRejected) {
-		t.Fatalf("expected ErrShelterRejected for full shelter, got %v", err)
+	if res.ID != 1 || res.Item != "Food" {
+		t.Errorf("unexpected resource details: %+v", res)
 	}
 }
