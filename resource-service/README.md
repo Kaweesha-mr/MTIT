@@ -26,7 +26,7 @@ Copy `.env.example` to `.env` and set values.
 
 ```env
 PORT=8083
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/?retryWrites=true&w=majority
+MONGODB_URI=mongodb://mongo_root:mongo_pass@localhost:27017/?authSource=admin
 DB_NAME=resource_db
 COLLECTION_NAME=resources
 SHELTER_SERVICE_URL=http://localhost:8084
@@ -184,3 +184,17 @@ curl -X PUT http://localhost:8083/resources/701/dispatch \
 
 These endpoints are designed to work directly on this service now.
 Later, the same endpoints can be exposed through API Gateway routing without changing the service contracts.
+
+## Run MongoDB with Docker Compose
+From `resource-service/`:
+```bash
+docker compose up -d
+```
+
+Then start the service (example):
+```bash
+MONGODB_URI=mongodb://mongo_root:mongo_pass@localhost:27017/?authSource=admin \
+DB_NAME=resource_db \
+COLLECTION_NAME=resources \
+go run ./cmd/server
+```
