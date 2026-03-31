@@ -1,0 +1,29 @@
+services:
+  fleet-mysql:
+    image: mysql:8.0
+    container_name: fleet-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: fleet_root
+      MYSQL_DATABASE: fleet_db
+      MYSQL_USER: fleet_user
+      MYSQL_PASSWORD: fleet_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - fleet_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pfleet_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - fleet-network
+
+volumes:
+  fleet_mysql_data:
+
+networks:
+  fleet-network:
+    driver: bridge
