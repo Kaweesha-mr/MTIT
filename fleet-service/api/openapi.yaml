@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Fleet Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8086
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200': { description: OK }
+  /vehicles:
+    post:
+      summary: Create vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleInput'
+      responses:
+        '201': { description: Vehicle created }
+        '400': { description: Invalid input }
+  /trips:
+    get:
+      summary: List trips
+      responses:
+        '200': { description: Trips retrieved }
+    post:
+      summary: Create trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripInput'
+      responses:
+        '201': { description: Trip created }
+        '400': { description: Invalid input }
+        '503': { description: Dependency unavailable }
+  /trips/volunteer/{volunteerId}:
+    get:
+      summary: Check active trips for volunteer
+      parameters:
+        - name: volunteerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200': { description: Result returned }
+components:
+  schemas:
+    VehicleInput:
+      type: object
+      properties:
+        type: { type: string }
+        plate: { type: string }
+        capacity: { type: string }
+      required: [type, plate, capacity]
+    TripInput:
+      type: object
+      properties:
+        vehicleId: { type: integer }
+        driverId: { type: integer }
+        cargoId: { type: integer }
+        destinationId: { type: integer }
+      required: [vehicleId, driverId, cargoId, destinationId]
