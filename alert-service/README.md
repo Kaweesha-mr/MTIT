@@ -10,6 +10,13 @@ Alert service implemented in Go with PostgreSQL.
 - `DELETE /alerts/{id}`
 - `GET /health`
 
+## API Documentation (Swagger)
+
+- Swagger UI: `http://localhost:8085/docs`
+- Swagger UI alias: `http://localhost:8085/swagger`
+- OpenAPI YAML: `http://localhost:8085/openapi.yaml`
+- Swagger JSON alias: `http://localhost:8085/swagger.json`
+
 ## Run locally
 
 1. Copy `.env.example` to `.env` and adjust values if needed.
