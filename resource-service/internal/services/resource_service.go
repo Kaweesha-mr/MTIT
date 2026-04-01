@@ -71,6 +71,51 @@ func (s *ResourceService) GetResource(ctx context.Context, id int) (*models.Reso
 	return resource, nil
 }
 
+func (s *ResourceService) ListResources(ctx context.Context) ([]models.Resource, error) {
+	return s.repo.List(ctx)
+}
+
+func (s *ResourceService) UpdateResource(ctx context.Context, id int, req models.CreateResourceRequest) (*models.Resource, error) {
+	if id <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if strings.TrimSpace(req.Item) == "" || strings.TrimSpace(req.Unit) == "" || req.Quantity <= 0 {
+		return nil, ErrInvalidInput
+	}
+
+	// Verify resource exists
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(ctx, id, strings.TrimSpace(req.Item), req.Quantity, strings.TrimSpace(req.Unit)); err != nil {
+		return nil, err
+	}
+
+	// Return updated resource
+	resource, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return resource, nil
+}
+
+func (s *ResourceService) DeleteResource(ctx context.Context, id int) error {
+	if id <= 0 {
+		return ErrInvalidInput
+	}
+
+	// Verify resource exists
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.Delete(ctx, id)
+}
+
 func (s *ResourceService) DispatchResource(ctx context.Context, resourceID int, req models.DispatchRequest) (*models.Resource, *models.Shelter, error) {
 	if resourceID <= 0 || req.ShelterID <= 0 {
 		return nil, nil, ErrInvalidInput
@@ -102,18 +147,22 @@ func (s *ResourceService) DispatchResource(ctx context.Context, resourceID int, 
 		return nil, nil, fmt.Errorf("%w: %v", ErrShelterUnavailable, err)
 	}
 
-	if strings.EqualFold(strings.TrimSpace(shelter.Status), "CLOSED") {
+	status := strings.ToUpper(strings.TrimSpace(shelter.Status))
+	if status != "OPEN" {
 		return nil, nil, ErrShelterRejected
 	}
-	if shelter.CurrentOccupancy >= shelter.MaxCapacity {
+
+	capacity := shelter.MaxCapacity
+	if capacity == 0 && shelter.Capacity > 0 {
+		capacity = shelter.Capacity
+	}
+
+	if capacity > 0 && shelter.CurrentOccupancy >= capacity {
 		return nil, nil, ErrShelterRejected
 	}
 
 	resource.Available -= req.Quantity
 	resource.Status = models.ResourceStatusDispatched
-	if resource.Available == 0 {
-		resource.Status = models.ResourceStatusDispatched
-	}
 
 	if err := s.repo.UpdateDispatch(ctx, resource.ID, resource.Available, resource.Status); err != nil {
 		return nil, nil, err
