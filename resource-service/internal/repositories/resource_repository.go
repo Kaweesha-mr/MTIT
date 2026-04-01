@@ -19,7 +19,10 @@ type ResourceRepository interface {
 	Create(ctx context.Context, resource *models.Resource) error
 	GetByID(ctx context.Context, id int) (*models.Resource, error)
 	UpdateDispatch(ctx context.Context, id int, available int, status string) error
+	Update(ctx context.Context, id int, item string, quantity int, unit string) error
+	Delete(ctx context.Context, id int) error
 	GetNextID(ctx context.Context) (int, error)
+	List(ctx context.Context) ([]models.Resource, error)
 }
 
 type MongoResourceRepository struct {
@@ -74,6 +77,57 @@ func (r *MongoResourceRepository) UpdateDispatch(ctx context.Context, id int, av
 	}
 
 	return nil
+}
+
+func (r *MongoResourceRepository) Update(ctx context.Context, id int, item string, quantity int, unit string) error {
+	res, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"id": id},
+		bson.M{"$set": bson.M{"item": item, "quantity": quantity, "unit": unit, "available": quantity, "weight": fmt.Sprintf("%dkg", quantity), "updatedAt": time.Now().UTC()}},
+	)
+	if err != nil {
+		return fmt.Errorf("update resource: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return ErrResourceNotFound
+	}
+
+	return nil
+}
+
+func (r *MongoResourceRepository) Delete(ctx context.Context, id int) error {
+	res, err := r.collection.DeleteOne(ctx, bson.M{"id": id})
+	if err != nil {
+		return fmt.Errorf("delete resource: %w", err)
+	}
+	if res.DeletedCount == 0 {
+		return ErrResourceNotFound
+	}
+
+	return nil
+}
+
+func (r *MongoResourceRepository) List(ctx context.Context) ([]models.Resource, error) {
+	cur, err := r.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("list resources: %w", err)
+	}
+	defer cur.Close(ctx)
+
+	var resources []models.Resource
+	for cur.Next(ctx) {
+		var res models.Resource
+		if err := cur.Decode(&res); err != nil {
+			return nil, fmt.Errorf("decode resource: %w", err)
+		}
+		resources = append(resources, res)
+	}
+
+	if err := cur.Err(); err != nil {
+		return nil, fmt.Errorf("list cursor: %w", err)
+	}
+
+	return resources, nil
 }
 
 func (r *MongoResourceRepository) GetNextID(ctx context.Context) (int, error) {
