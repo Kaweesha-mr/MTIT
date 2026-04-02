@@ -1,0 +1,833 @@
+{
+	"info": {
+		"_postman_id": "c1f6b5b9-4a92-411a-b333-e91bbff1ced4",
+		"name": "MTIT API Gateway Collection",
+		"description": "Full CRUD collection with REQUEST→OPEN shelter workflow. Shelters are auto-created in REQUEST status when incident created. Admin must update to OPEN with location before fleet can create trips.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Gateway Core",
+			"item": [
+				{
+					"name": "Gateway Health",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					}
+				},
+				{
+					"name": "Services Status",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["status"]
+						}
+					}
+				},
+				{
+					"name": "📋 View Gateway Logs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					},
+					"description": "Gateway request logs are stored in container at: /var/log/gateway/requests.log\n\nView logs with:\n  docker exec mtit-gateway cat /var/log/gateway/requests.log\n  docker exec mtit-gateway tail -f /var/log/gateway/requests.log\n\nEach log entry shows: timestamp, method, path, service routed to, status, duration_ms, client_ip, cache_hit, rate_limited\n\nFormat: JSON (one entry per line)\nRotate: mv /var/log/gateway/requests.log /var/log/gateway/requests.log.old"
+				}
+			]
+		},
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"change-me-now\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.token) {",
+									"    pm.collectionVariables.set(\"jwtToken\", jsonData.token);",
+									"}"
+								]
+							}
+						}
+					],
+					"auth": {"type": "noauth"}
+				}
+			]
+		},
+		{
+			"name": "Incident Service",
+			"item": [
+				{
+					"name": "Create Incident",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"FIRE\",\n    \"location\": \"123 Main St, Downtown\",\n    \"severity\": \"CRITICAL\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/incidents",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) {",
+									"    pm.collectionVariables.set(\"incidentId\", jsonData.id);",
+									"}",
+									"if(jsonData.downstream && jsonData.downstream.shelterId) {",
+									"    pm.collectionVariables.set(\"shelterId\", jsonData.downstream.shelterId);",
+									"}",
+									"if(jsonData.downstream && jsonData.downstream.alertId) {",
+									"    pm.collectionVariables.set(\"alertId\", jsonData.downstream.alertId);",
+									"}"
+								]
+							}
+						}
+					],
+					"description": "Creates incident and auto-triggers:\n✓ Alert (BROADCASTED)\n✓ Shelter (REQUEST status - needs admin prep)"
+				},
+				{
+					"name": "Get Incidents",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/incidents",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents"]
+						}
+					}
+				},
+				{
+					"name": "Get Incident By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/incidents/{{incidentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents", "{{incidentId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Incident",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"FLOOD\",\n    \"location\": \"Lakeville Area\",\n    \"severity\": \"CRITICAL\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/incidents/{{incidentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents", "{{incidentId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Incident Status",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"IN_PROGRESS\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/incidents/{{incidentId}}/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents", "{{incidentId}}", "status"]
+						}
+					}
+				},
+				{
+					"name": "Delete Incident",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/incidents/{{incidentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents", "{{incidentId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Volunteer Service",
+			"item": [
+				{
+					"name": "Create Volunteer",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Doe\",\n    \"role\": \"DOCTOR\",\n    \"phone\": \"0771234567\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/volunteers",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) pm.collectionVariables.set(\"volunteerId\", jsonData.id);"
+								]
+							}
+						}
+					],
+					"description": "Create volunteer with role (DOCTOR, DRIVER, RESCUE, LEADER)\nNote: Only DRIVER role can be assigned to trips"
+				},
+				{
+					"name": "Get Volunteers",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/volunteers",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers"]
+						}
+					},
+					"description": "List all volunteers with role and status (AVAILABLE/BUSY)\nUse to find available DRIVER volunteers for trips"
+				},
+				{
+					"name": "Get Volunteer By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/volunteers/{{volunteerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers", "{{volunteerId}}"]
+						}
+					},
+					"description": "Get volunteer details including role and status\nFleet service validates role == DRIVER before trip assignment"
+				},
+				{
+					"name": "Update Volunteer",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Smith\",\n    \"role\": \"NURSE\",\n    \"phone\": \"0779876543\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/volunteers/{{volunteerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers", "{{volunteerId}}"]
+						}
+					},
+					"description": "Update volunteer details\nWarning: Changing role from DRIVER may affect active trips"
+				},
+				{
+					"name": "Assign Volunteer",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"incidentId\": {{incidentId}},\n    \"role\": \"On-Site Responder\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/volunteers/{{volunteerId}}/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers", "{{volunteerId}}", "assign"]
+						}
+					},
+					"description": "Assign volunteer to incident"
+				},
+				{
+					"name": "Delete Volunteer",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/volunteers/{{volunteerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["volunteers", "{{volunteerId}}"]
+						}
+					},
+					"description": "Delete volunteer"
+				}
+			]
+		},
+		{
+			"name": "Resource Service",
+			"item": [
+				{
+					"name": "Create Resource",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"item\": \"WATER_BOTTLES\",\n    \"quantity\": 1000,\n    \"unit\": \"PACKS\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/resources",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) pm.collectionVariables.set(\"resourceId\", jsonData.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Resources",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/resources",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources"]
+						}
+					}
+				},
+				{
+					"name": "Get Resource By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/resources/{{resourceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources", "{{resourceId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Resource",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"item\": \"WATER_BOTTLES\",\n    \"quantity\": 2000,\n    \"unit\": \"PACKS\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/resources/{{resourceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources", "{{resourceId}}"]
+						}
+					}
+				},
+				{
+					"name": "Dispatch Resource",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"shelterId\": {{shelterId}},\n    \"quantity\": 500\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/resources/{{resourceId}}/dispatch",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources", "{{resourceId}}", "dispatch"]
+						}
+					}
+				},
+				{
+					"name": "Delete Resource",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/resources/{{resourceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["resources", "{{resourceId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Shelter Service",
+			"item": [
+				{
+					"name": "Create Shelter (Manual)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"incidentId\": {{incidentId}},\n    \"name\": \"Emergency Shelter\",\n    \"capacity\": 500\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shelters",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) pm.collectionVariables.set(\"shelterId\", jsonData.id);"
+								]
+							}
+						}
+					],
+					"description": "Creates shelter in REQUEST status (usually auto-created with incident)"
+				},
+				{
+					"name": "Get Shelters",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/shelters",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters"]
+						}
+					},
+					"description": "List shelters with status (REQUEST/OPEN/CLOSED) and location if set"
+				},
+				{
+					"name": "Get Shelter By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}"]
+						}
+					},
+					"description": "Get shelter details: status, location, capacity, occupancy"
+				},
+				{
+					"name": "⏳ Get Shelter (REQUEST - Not Ready)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}"]
+						}
+					},
+					"description": "Check shelter status before admin preparation. Should show status=REQUEST and location=null"
+				},
+				{
+					"name": "🏢 Update Shelter - Set Location & OPEN",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"City Community Center\",\n    \"capacity\": 300,\n    \"location\": \"790 Oak St, Downtown\",\n    \"status\": \"OPEN\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}"]
+						}
+					},
+					"description": "Admin prepares shelter:\n1. Set exact location near incident\n2. Adjust capacity\n3. Mark status as OPEN\nAfter this, fleet can create trips with this shelter as destination"
+				},
+				{
+					"name": "✅ Update Shelter - Back to REQUEST",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Emergency Shelter\",\n    \"capacity\": 500,\n    \"status\": \"REQUEST\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}"]
+						}
+					},
+					"description": "If not ready yet, revert status back to REQUEST"
+				},
+				{
+					"name": "Update Shelter Occupancy",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentOccupancy\": 85\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}/capacity",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}", "capacity"]
+						}
+					}
+				},
+				{
+					"name": "Delete Shelter",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/shelters/{{shelterId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["shelters", "{{shelterId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Alert Service",
+			"item": [
+				{
+					"name": "Create Alert",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"incidentId\": {{incidentId}},\n    \"message\": \"Please evacuate region 4 immediately.\",\n    \"severity\": \"CRITICAL\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/alerts",
+							"host": ["{{baseUrl}}"],
+							"path": ["alerts"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) pm.collectionVariables.set(\"alertId\", jsonData.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Alerts",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/alerts",
+							"host": ["{{baseUrl}}"],
+							"path": ["alerts"]
+						}
+					}
+				},
+				{
+					"name": "Get Alert By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/alerts/{{alertId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["alerts", "{{alertId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Alert",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Updated: All residents must evacuate now.\",\n    \"severity\": \"CRITICAL\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/alerts/{{alertId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["alerts", "{{alertId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Alert",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/alerts/{{alertId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["alerts", "{{alertId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Fleet Service",
+			"item": [
+				{
+					"name": "Create Vehicle",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"Transport Truck\",\n    \"plate\": \"XYZ-9876\",\n    \"capacity\": \"5000kg\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/vehicles",
+							"host": ["{{baseUrl}}"],
+							"path": ["vehicles"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.id) pm.collectionVariables.set(\"vehicleId\", jsonData.id);"
+								]
+							}
+						}
+					],
+					"description": "Register vehicle for trip operations"
+				},
+				{
+					"name": "Get Vehicles",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/vehicles",
+							"host": ["{{baseUrl}}"],
+							"path": ["vehicles"]
+						}
+					},
+					"description": "List all vehicles with status (AVAILABLE/IN_USE)"
+				},
+				{
+					"name": "Get Vehicle By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["vehicles", "{{vehicleId}}"]
+						}
+					},
+					"description": "Get vehicle details and current status"
+				},
+				{
+					"name": "Update Vehicle",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"Ambulance\",\n    \"status\": \"AVAILABLE\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["vehicles", "{{vehicleId}}"]
+						}
+					},
+					"description": "Update vehicle type or status"
+				},
+				{
+					"name": "Delete Vehicle",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["vehicles", "{{vehicleId}}"]
+						}
+					},
+					"description": "Delete vehicle from fleet"
+				},
+				{
+					"name": "Create Trip",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"vehicleId\": {{vehicleId}},\n    \"driverId\": {{volunteerId}},\n    \"cargoId\": {{resourceId}},\n    \"destinationId\": {{shelterId}}\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/trips",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.tripId) pm.collectionVariables.set(\"tripId\", jsonData.tripId);"
+								]
+							}
+						}
+					],
+					"description": "Create trip with validation:\n✓ Vehicle must be AVAILABLE\n✓ Driver must have DRIVER role\n✓ Shelter must be OPEN status\n✗ Fails if shelter is REQUEST (not prepared yet)"
+				},
+				{
+					"name": "Get Trips",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/trips",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips"]
+						}
+					},
+					"description": "List all trips with status"
+				},
+				{
+					"name": "Get Trip By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/trips/{{tripId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips", "{{tripId}}"]
+						}
+					},
+					"description": "Get trip details including vehicle, driver, and destination"
+				},
+				{
+					"name": "Update Trip Status",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"IN_PROGRESS\"\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/trips/{{tripId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips", "{{tripId}}"]
+						}
+					},
+					"description": "Update trip status (IN_PROGRESS, COMPLETED, CANCELLED)"
+				},
+				{
+					"name": "Delete Trip",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/trips/{{tripId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips", "{{tripId}}"]
+						}
+					},
+					"description": "Cancel/delete trip"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{"key": "baseUrl", "value": "http://localhost:8080", "type": "string"},
+		{"key": "jwtToken", "value": "", "type": "string"},
+		{"key": "incidentId", "value": "", "type": "string"},
+		{"key": "volunteerId", "value": "", "type": "string"},
+		{"key": "resourceId", "value": "", "type": "string"},
+		{"key": "shelterId", "value": "", "type": "string"},
+		{"key": "alertId", "value": "", "type": "string"},
+		{"key": "vehicleId", "value": "", "type": "string"},
+		{"key": "tripId", "value": "", "type": "string"}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwtToken}}",
+				"type": "string"
+			}
+		]
+	}
+}

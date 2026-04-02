@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
   title: Incident Service API
-  version: 0.1.0
+  version: 0.2.0
+servers:
+  - url: http://localhost:8081
 paths:
   /health:
     get:
@@ -9,9 +11,186 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  db:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: up
+                      source:
+                        type: string
+                        example: postgres
   /incidents:
     get:
       summary: List incidents
       responses:
         '200':
           description: List of incidents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncidentListItem'
+    post:
+      summary: Create incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncidentRequest'
+      responses:
+        '201':
+          description: Incident created
+        '400':
+          description: Invalid request body or validation error
+        '503':
+          description: Downstream service trigger failed
+  /incidents/{id}:
+    get:
+      summary: Get incident by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Incident details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '404':
+          description: Incident not found
+    put:
+      summary: Full update incident type/location/severity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIncidentRequest'
+      responses:
+        '200':
+          description: Incident updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          description: Invalid request body or validation error
+        '404':
+          description: Incident not found
+    delete:
+      summary: Delete incident by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Incident deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Incident deleted successfully
+        '404':
+          description: Incident not found
+  /incidents/{id}/status:
+    put:
+      summary: Update incident status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        '200':
+          description: Incident status updated
+        '400':
+          description: Invalid request body or validation error
+        '404':
+          description: Incident not found
+components:
+  schemas:
+    Incident:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        location:
+          type: string
+        severity:
+          type: string
+        status:
+          type: string
+      required: [id, type, location, severity, status]
+    IncidentListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        status:
+          type: string
+      required: [id, type, status]
+    CreateIncidentRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        location:
+          type: string
+        severity:
+          type: string
+      required: [type, location, severity]
+    UpdateIncidentRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        location:
+          type: string
+        severity:
+          type: string
+      required: [type, location, severity]
+    UpdateStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, RESOLVED, IN_PROGRESS]
+      required: [status]

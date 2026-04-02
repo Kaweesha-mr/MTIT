@@ -1,3 +1,11 @@
 bin/
 .env
 coverage.out
+
+# Build/test artifacts
+*.test
+*.out
+
+# Editor and OS files
+.DS_Store
+.vscode/
