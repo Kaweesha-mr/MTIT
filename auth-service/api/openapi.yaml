@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: auth-service
+  version: 1.0.0
+  description: Authentication service for issuing JWT tokens.
+servers:
+  - url: http://localhost:8090
+paths:
+  /health:
+    get:
+      summary: Service health check
+      tags: [Health]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  db:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: n/a
+                      source:
+                        type: string
+                        example: none
+  /login:
+    post:
+      summary: Login and get a JWT token
+      description: |
+        Accepts either HTTP Basic credentials or JSON body credentials.
+      tags: [Auth]
+      security:
+        - basicAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: admin
+              password: change-me-now
+      responses:
+        "200":
+          description: JWT issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: unauthorized
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          example: change-me-now
+      required:
+        - username
+        - password
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Signed JWT token
+        expiresIn:
+          type: integer
+          description: Expiration in seconds
+          example: 3600
+      required:
+        - token
+        - expiresIn

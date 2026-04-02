@@ -1,0 +1,14 @@
+services:
+  auth-service:
+    build: .
+    container_name: auth-service
+    env_file:
+      - ./configs/.env.example
+    ports:
+      - "8090:8090"
+    networks:
+      - auth-network
+
+networks:
+  auth-network:
+    driver: bridge

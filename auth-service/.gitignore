@@ -1,0 +1,32 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Go
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+.env
+go.sum
+
+# Binaries
+bin/
+/server
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env.local
+.env.*.local
