@@ -10,7 +10,7 @@ import (
 
 func NewPostgresConnection() (*sql.DB, error) {
 	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
+	port := getEnv("DB_PORT", "5437")
 	user := getEnv("DB_USER", "alert_user")
 	password := getEnv("DB_PASSWORD", "alert_pass")
 	dbName := getEnv("DB_NAME", "alerts_db")

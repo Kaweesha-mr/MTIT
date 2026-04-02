@@ -1,10 +1,12 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
 
+	"alert-service/internal/clients"
 	"alert-service/internal/models"
 	"alert-service/internal/repositories"
 )
@@ -12,16 +14,25 @@ import (
 var ErrValidation = errors.New("validation failed")
 
 type AlertService struct {
-	repository repositories.AlertRepository
+	repository      repositories.AlertRepository
+	incidentClient  clients.IncidentValidator
 }
 
-func NewAlertService(repository repositories.AlertRepository) *AlertService {
-	return &AlertService{repository: repository}
+func NewAlertService(repository repositories.AlertRepository, incidentClient clients.IncidentValidator) *AlertService {
+	return &AlertService{
+		repository:     repository,
+		incidentClient: incidentClient,
+	}
 }
 
-func (s *AlertService) Create(req models.CreateAlertRequest) (models.CreateAlertResponse, error) {
+func (s *AlertService) Create(ctx context.Context, req models.CreateAlertRequest) (models.CreateAlertResponse, error) {
 	if req.IncidentID <= 0 || strings.TrimSpace(req.Message) == "" || strings.TrimSpace(req.Severity) == "" {
 		return models.CreateAlertResponse{}, ErrValidation
+	}
+
+	// Validate incident exists and is ACTIVE
+	if err := s.incidentClient.ValidateIncidentExists(ctx, req.IncidentID); err != nil {
+		return models.CreateAlertResponse{}, err
 	}
 
 	alert := models.Alert{
