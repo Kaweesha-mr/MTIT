@@ -82,9 +82,10 @@ func (h *VolunteerHandler) VolunteersCollection(w http.ResponseWriter, r *http.R
 		list := make([]map[string]any, 0, len(volunteers))
 		for _, v := range volunteers {
 			list = append(list, map[string]any{
-				"id":   v.ID,
-				"name": v.Name,
-				"role": v.Role,
+				"id":     v.ID,
+				"name":   v.Name,
+				"role":   v.Role,
+				"status": v.Status,
 			})
 		}
 		w.WriteHeader(http.StatusOK)
@@ -119,6 +120,7 @@ func (h *VolunteerHandler) VolunteerByID(w http.ResponseWriter, r *http.Request)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id":     volunteer.ID,
 			"name":   volunteer.Name,
+			"role":   volunteer.Role,
 			"status": volunteer.Status,
 		})
 
