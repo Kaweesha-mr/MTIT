@@ -1,5 +1,5 @@
 package main
-
+//define port and start server,
 import (
 	"log"
 	"net/http"
