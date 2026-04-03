@@ -22,7 +22,23 @@ type PostgresAlertRepository struct {
 }
 
 func NewPostgresAlertRepository(db *sql.DB) *PostgresAlertRepository {
-	return &PostgresAlertRepository{db: db}
+	repo := &PostgresAlertRepository{db: db}
+	_ = repo.ensureSchema()
+	return repo
+}
+
+func (r *PostgresAlertRepository) ensureSchema() error {
+	query := `
+	CREATE TABLE IF NOT EXISTS alerts (
+		id SERIAL PRIMARY KEY,
+		incident_id INT NOT NULL,
+		message TEXT NOT NULL,
+		severity VARCHAR(20) NOT NULL,
+		status VARCHAR(30) NOT NULL,
+		timestamp TIMESTAMP NOT NULL
+	);`
+	_, err := r.db.Exec(query)
+	return err
 }
 
 func (r *PostgresAlertRepository) Create(alert models.Alert) (models.Alert, error) {

@@ -1,28 +1,52 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"alert-service/internal/clients"
 	"alert-service/internal/models"
 	"alert-service/internal/repositories"
 	"alert-service/internal/services"
 )
 
 type AlertHandler struct {
-	service *services.AlertService
+	service      *services.AlertService
+	healthCheck  func(ctx context.Context) error
+	healthSource string
 }
 
-func NewAlertHandler(service *services.AlertService) *AlertHandler {
-	return &AlertHandler{service: service}
+func NewAlertHandler(service *services.AlertService, healthCheck func(ctx context.Context) error, healthSource string) *AlertHandler {
+	return &AlertHandler{service: service, healthCheck: healthCheck, healthSource: healthSource}
 }
 
 func (h *AlertHandler) Health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	payload := map[string]any{
+		"status": "ok",
+		"db":     map[string]any{"status": "unknown", "source": h.healthSource},
+	}
+
+	if h.healthCheck != nil {
+		if err := h.healthCheck(ctx); err != nil {
+			payload["status"] = "degraded"
+			payload["db"] = map[string]any{"status": "down", "source": h.healthSource, "error": err.Error()}
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(payload)
+			return
+		}
+		payload["db"] = map[string]any{"status": "up", "source": h.healthSource}
+	}
+
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func (h *AlertHandler) AlertsCollection(w http.ResponseWriter, r *http.Request) {
@@ -46,13 +70,24 @@ func (h *AlertHandler) AlertsCollection(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		res, err := h.service.Create(req)
+		// Create context with timeout for the service call
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		res, err := h.service.Create(ctx, req)
 		if err != nil {
 			if err == services.ErrValidation {
 				h.writeError(w, http.StatusBadRequest, "incidentId, message and severity are required")
 				return
 			}
-			h.writeError(w, http.StatusInternalServerError, "failed to create alert")
+
+			// Handle ValidationError from incident service call
+			if validationErr, ok := err.(*clients.ValidationError); ok {
+				h.writeError(w, validationErr.StatusCode, validationErr.Message)
+				return
+			}
+
+			h.writeError(w, http.StatusInternalServerError, "failed to create alert: "+err.Error())
 			return
 		}
 
