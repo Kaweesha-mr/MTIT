@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  gateway:
+    build: .
+    container_name: mtit-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./configs/.env
+    environment:
+      CACHE_ENABLED: "true"
+      CACHE_TTL_SECONDS: 120
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+    networks:
+      - mtit
+
+  redis:
+    image: redis:7-alpine
+    container_name: mtit-gateway-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    networks:
+      - mtit
+
+networks:
+  mtit:
+    driver: bridge
