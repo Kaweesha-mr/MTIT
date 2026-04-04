@@ -16,7 +16,6 @@ env/
 
 # Local environment/config
 .env
-.env.*
 
 # OS/editor files
 .DS_Store
