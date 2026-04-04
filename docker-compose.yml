@@ -102,10 +102,11 @@ services:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
     networks:
       - mtit-network
 
@@ -236,6 +237,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   # Gateway (Go)
   gateway:
@@ -281,6 +283,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   # Shelter Service (Node.js)
   shelter-service:
