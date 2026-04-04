@@ -9,6 +9,5 @@ FROM alpine:3.19
 WORKDIR /app
 COPY --from=build /app/auth-service /app/auth-service
 COPY --from=build /app/api /app/api
-COPY configs/.env.example /app/.env
 EXPOSE 8090
 ENTRYPOINT ["/app/auth-service"]

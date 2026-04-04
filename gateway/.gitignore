@@ -16,7 +16,6 @@ vendor/
 *.dll
 *.so
 *.dylib
-.env
 go.sum
 
 # Binaries
@@ -26,6 +25,4 @@ bin/
 *.log
 logs/
 
-# Environment
-.env.local
-.env.*.local
+#
