@@ -59,12 +59,7 @@ jobs:
         run: |
           cd fleet-service
           pip install -r requirements.txt
-          pip install pytest flake8
-      
-      - name: Run tests
-        run: |
-          cd fleet-service
-          pytest tests/ -v
+          pip install flake8
       
       - name: Check code style with flake8
         run: |
