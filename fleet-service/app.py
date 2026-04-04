@@ -301,12 +301,17 @@ def create_trip():
 @app.route("/trips/volunteer/<driver_id>", methods=["GET"])
 def trips_for_volunteer(driver_id: str):
     db = get_db()
+    try:
+        driver_id_int = int(driver_id)
+    except ValueError:
+        driver_id_int = driver_id
+    
     trips = db.trips.find({
-        "driver_id": int(driver_id) if driver_id.isdigit() else driver_id,
+        "driver_id": driver_id_int,
         "status": {"$in": ["SCHEDULED", "IN_PROGRESS", "BUSY"]}
     })
     has_active = any(trips)
-    return jsonify({"volunteerId": driver_id, "hasActiveTrip": has_active})
+    return jsonify({"volunteerId": driver_id_int, "hasActiveTrip": has_active})
 
 
 @app.route("/trips/<trip_id>", methods=["GET"])

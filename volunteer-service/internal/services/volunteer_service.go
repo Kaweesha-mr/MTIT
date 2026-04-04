@@ -25,6 +25,7 @@ var allowedRoles = map[string]struct{}{
 	"DRIVER": {},
 	"RESCUE": {},
 	"LEADER": {},
+	"NURSE":  {},
 }
 
 type VolunteerService struct {
