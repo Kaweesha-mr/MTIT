@@ -1,0 +1,209 @@
+name: Generate & Deploy API Docs
+
+on:
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js for ReDoc
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install ReDoc CLI
+        run: npm install -g redoc-cli
+      
+      - name: Create docs directory
+        run: mkdir -p docs
+      
+      - name: Generate API docs from OpenAPI specs
+        run: |
+          # Alert Service
+          if [ -f alert-service/api/openapi.yaml ]; then
+            redoc-cli build alert-service/api/openapi.yaml -o docs/alert-service.html --title "Alert Service API"
+          fi
+          
+          # Auth Service
+          if [ -f auth-service/api/openapi.yaml ]; then
+            redoc-cli build auth-service/api/openapi.yaml -o docs/auth-service.html --title "Auth Service API"
+          fi
+          
+          # Gateway
+          if [ -f gateway/api/openapi.yaml ]; then
+            redoc-cli build gateway/api/openapi.yaml -o docs/gateway.html --title "Gateway API"
+          fi
+          
+          # Fleet Service
+          if [ -f fleet-service/api/openapi.yaml ]; then
+            redoc-cli build fleet-service/api/openapi.yaml -o docs/fleet-service.html --title "Fleet Service API"
+          fi
+          
+          # Incident Service
+          if [ -f incident-service/api/openapi.yaml ]; then
+            redoc-cli build incident-service/api/openapi.yaml -o docs/incident-service.html --title "Incident Service API"
+          fi
+          
+          # Resource Service
+          if [ -f resource-service/api/openapi.yaml ]; then
+            redoc-cli build resource-service/api/openapi.yaml -o docs/resource-service.html --title "Resource Service API"
+          fi
+          
+          # Shelter Service
+          if [ -f shelter-service/api/openapi.yaml ]; then
+            redoc-cli build shelter-service/api/openapi.yaml -o docs/shelter-service.html --title "Shelter Service API"
+          fi
+          
+          # Volunteer Service
+          if [ -f volunteer-service/api/openapi.yaml ]; then
+            redoc-cli build volunteer-service/api/openapi.yaml -o docs/volunteer-service.html --title "Volunteer Service API"
+          fi
+      
+      - name: Create index.html
+        run: |
+          cat > docs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>MTIT Microservices API Documentation</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                      margin: 0;
+                      padding: 20px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      min-height: 100vh;
+                  }
+                  .container {
+                      max-width: 900px;
+                      margin: 0 auto;
+                      background: white;
+                      border-radius: 8px;
+                      padding: 40px;
+                      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                  }
+                  h1 {
+                      color: #333;
+                      margin-top: 0;
+                      text-align: center;
+                  }
+                  .description {
+                      color: #666;
+                      text-align: center;
+                      margin-bottom: 30px;
+                  }
+                  .services-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                      gap: 20px;
+                      margin-top: 30px;
+                  }
+                  .service-card {
+                      border: 1px solid #e0e0e0;
+                      border-radius: 4px;
+                      padding: 20px;
+                      transition: all 0.3s;
+                  }
+                  .service-card:hover {
+                      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                      transform: translateY(-2px);
+                  }
+                  .service-card h3 {
+                      margin-top: 0;
+                      color: #667eea;
+                  }
+                  .service-card a {
+                      display: inline-block;
+                      background: #667eea;
+                      color: white;
+                      padding: 10px 20px;
+                      border-radius: 4px;
+                      text-decoration: none;
+                      transition: background 0.3s;
+                  }
+                  .service-card a:hover {
+                      background: #764ba2;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🏗️ MTIT Microservices</h1>
+                  <p class="description">Complete API documentation for all services</p>
+                  
+                  <div class="services-grid">
+                      <div class="service-card">
+                          <h3>Alert Service</h3>
+                          <p>Manages alerts and notifications</p>
+                          <a href="alert-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Auth Service</h3>
+                          <p>Authentication and authorization</p>
+                          <a href="auth-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Gateway</h3>
+                          <p>API Gateway and routing</p>
+                          <a href="gateway.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Fleet Service</h3>
+                          <p>Fleet management</p>
+                          <a href="fleet-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Incident Service</h3>
+                          <p>Incident tracking and management</p>
+                          <a href="incident-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Resource Service</h3>
+                          <p>Resource management and allocation</p>
+                          <a href="resource-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Shelter Service</h3>
+                          <p>Shelter and accommodation services</p>
+                          <a href="shelter-service.html">View API Docs →</a>
+                      </div>
+                      
+                      <div class="service-card">
+                          <h3>Volunteer Service</h3>
+                          <p>Volunteer management</p>
+                          <a href="volunteer-service.html">View API Docs →</a>
+                      </div>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+      
+      - name: Deploy to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: docs
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,99 @@
+name: CI - Tests & Linting
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  # Go Services: alert-service, incident-service, resource-service, volunteer-service, auth-service, gateway
+  go-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [alert-service, incident-service, resource-service, volunteer-service, auth-service, gateway]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Run tests for ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          go test -v ./...
+      
+      - name: Check formatting
+        run: |
+          cd ${{ matrix.service }}
+          if [ -n "$(gofmt -s -l .)" ]; then
+            echo "Go code is not formatted:"
+            gofmt -s -d .
+            exit 1
+          fi
+      
+      - name: Install golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      
+      - name: Run golangci-lint
+        run: |
+          cd ${{ matrix.service }}
+          golangci-lint run ./...
+
+  # Fleet Service (Python)
+  fleet-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          cd fleet-service
+          pip install -r requirements.txt
+          pip install pytest flake8
+      
+      - name: Run tests
+        run: |
+          cd fleet-service
+          pytest tests/ -v
+      
+      - name: Check code style with flake8
+        run: |
+          cd fleet-service
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  # Shelter Service (Node.js)
+  shelter-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          cd shelter-service
+          npm install
+      
+      - name: Run tests
+        run: |
+          cd shelter-service
+          npm test
+      
+      - name: Check linting
+        run: |
+          cd shelter-service
+          npm run lint || true
