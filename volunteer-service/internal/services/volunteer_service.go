@@ -90,6 +90,18 @@ func (s *VolunteerService) List() ([]models.Volunteer, error) {
 }
 
 func (s *VolunteerService) UpdateVolunteer(id int, req models.UpdateVolunteerRequest) (models.Volunteer, error) {
+	volunteer, err := s.repository.GetByID(id)
+	if err != nil {
+		return models.Volunteer{}, err
+	}
+
+	// If only status is provided (for trip assignment), update and return
+	if req.Status != "" && req.Name == "" && req.Role == "" && req.Phone == "" {
+		volunteer.Status = strings.ToUpper(strings.TrimSpace(req.Status))
+		return s.repository.Update(volunteer)
+	}
+
+	// Otherwise, all fields must be provided
 	name := strings.TrimSpace(req.Name)
 	role := strings.ToUpper(strings.TrimSpace(req.Role))
 	phone := strings.TrimSpace(req.Phone)
@@ -106,14 +118,14 @@ func (s *VolunteerService) UpdateVolunteer(id int, req models.UpdateVolunteerReq
 		return models.Volunteer{}, ErrValidation
 	}
 
-	volunteer, err := s.repository.GetByID(id)
-	if err != nil {
-		return models.Volunteer{}, err
-	}
-
 	volunteer.Name = name
 	volunteer.Role = role
 	volunteer.Phone = phone
+	
+	// If status is provided, update it as well
+	if req.Status != "" {
+		volunteer.Status = strings.ToUpper(strings.TrimSpace(req.Status))
+	}
 
 	return s.repository.Update(volunteer)
 }

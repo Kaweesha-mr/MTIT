@@ -51,7 +51,7 @@ async function createShelter(payload) {
 }
 
 async function listShelters() {
-  const result = await pool.query('SELECT id, incident_id, name, status, location FROM shelters ORDER BY id');
+  const result = await pool.query('SELECT id, incident_id, name, capacity, status, current_occupancy, location FROM shelters ORDER BY id');
   
   const shelters = [];
   for (const row of result.rows) {
@@ -60,7 +60,9 @@ async function listShelters() {
       id: row.id,
       incidentId: row.incident_id,
       name: row.name,
+      capacity: row.capacity,
       status: row.status,
+      currentOccupancy: row.current_occupancy,
       shelterLocation: row.location,
       incidentLocation: incident ? incident.location : null,
     });

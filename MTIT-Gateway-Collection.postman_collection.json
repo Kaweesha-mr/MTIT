@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "c1f6b5b9-4a92-411a-b333-e91bbff1ced4",
 		"name": "MTIT API Gateway Collection",
-		"description": "Full CRUD collection with REQUEST→OPEN shelter workflow. Shelters are auto-created in REQUEST status when incident created. Admin must update to OPEN with location before fleet can create trips.",
+		"description": "Full CRUD collection with REQUEST→OPEN shelter workflow. Shelters are auto-created in REQUEST status when incident created. Admin must update to OPEN with location before fleet can create trips. Trip creation provides detailed error messages showing EXACTLY what's wrong (missing vehicle, invalid driver, shelter not OPEN, etc).",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -32,7 +32,7 @@
 					}
 				},
 				{
-					"name": "📋 View Gateway Logs",
+					"name": "View Gateway Logs",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -458,7 +458,7 @@
 					"description": "Get shelter details including status, capacity, occupancy, shelter location, and incident location\nReturns: id, incidentId, name, capacity, status, currentOccupancy, shelterLocation, incidentLocation"
 				},
 				{
-					"name": "⏳ Get Shelter (REQUEST - Not Ready)",
+					"name": "Get Shelter (REQUEST - Not Ready)",
 					"request": {
 						"method": "GET",
 						"url": {
@@ -470,7 +470,7 @@
 					"description": "Check shelter status before admin preparation. Should show status=REQUEST and shelterLocation=null. Includes incidentLocation from the original incident."
 				},
 				{
-					"name": "🏢 Update Shelter - Set Location & OPEN",
+					"name": "Update Shelter - Set Location & OPEN",
 					"request": {
 						"method": "PUT",
 						"header": [{"key": "Content-Type", "value": "application/json"}],
@@ -488,7 +488,7 @@
 					"description": "Admin opens shelter near incident. Name field is optional (not required to update).\n\n1. Set shelter location near incident\n2. Adjust capacity\n3. Mark status as OPEN\n\nResponse includes both shelterLocation (what you set) and incidentLocation (original incident). After this, fleet can create trips with this shelter as destination"
 				},
 				{
-					"name": "✅ Update Shelter - Back to REQUEST",
+					"name": "Update Shelter - Back to REQUEST",
 					"request": {
 						"method": "PUT",
 						"header": [{"key": "Content-Type", "value": "application/json"}],
@@ -713,7 +713,7 @@
 						"header": [{"key": "Content-Type", "value": "application/json"}],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"vehicleId\": {{vehicleId}},\n    \"driverId\": {{volunteerId}},\n    \"cargoId\": {{resourceId}},\n    \"destinationId\": {{shelterId}}\n}",
+							"raw": "{\n    \"vehicleId\": \"{{vehicleId}}\",\n    \"driverId\": {{volunteerId}},\n    \"cargoId\": {{resourceId}},\n    \"destinationId\": {{shelterId}}\n}",
 							"options": {"raw": {"language": "json"}}
 						},
 						"url": {
@@ -734,7 +734,7 @@
 							}
 						}
 					],
-					"description": "Create trip with validation:\n✓ Vehicle must be AVAILABLE\n✓ Driver must have DRIVER role\n✓ Shelter must be OPEN status\n✗ Fails if shelter is REQUEST (not prepared yet)"
+					"description": "Create trip with DETAILED ERROR MESSAGES for debugging:\n\nValidations:\n✓ Vehicle must be AVAILABLE (case-insensitive)\n✓ Driver must exist and have DRIVER role\n✓ Cargo/Resource must exist\n✓ Shelter must exist AND be OPEN status\n\nDetailed Error Messages:\n→ \"vehicleId is required (got: null)\" = Missing vehicleId\n→ \"invalid vehicleId format: invalid-id\" = Wrong ID format\n→ \"vehicle not found with ID: ...\" = Vehicle doesn't exist\n→ \"vehicle is not available - current status: IN_USE\" = Vehicle in use by other trip\n→ \"driver with ID 99999 not found\" = Driver/Volunteer doesn't exist\n→ \"driver must have DRIVER role\" = Volunteer doesn't have DRIVER role\n→ \"cargo/resource with ID 99999 not found\" = Resource missing\n→ \"shelter with ID 99999 not found\" = Shelter doesn't exist\n→ \"shelter is not available for trips - current status: REQUEST\" = Shelter not prepared yet\n\nWorkflow: Create incident → Shelter auto-created (REQUEST) → Admin updates shelter to OPEN → Then create trip"
 				},
 				{
 					"name": "Get Trips",

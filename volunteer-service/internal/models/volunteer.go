@@ -27,6 +27,7 @@ type UpdateVolunteerRequest struct {
 	Name   string `json:"name"`
 	Role   string `json:"role"`
 	Phone  string `json:"phone"`
+	Status string `json:"status,omitempty"`
 }
 
 type AssignVolunteerRequest struct {

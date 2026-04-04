@@ -77,6 +77,34 @@ func (s *Store) Set(ctx context.Context, key string, entry *Entry) error {
 	return s.client.Set(ctx, key, payload, s.ttl).Err()
 }
 
+// Delete removes a specific cache entry.
+func (s *Store) Delete(ctx context.Context, key string) error {
+	if !s.enabled || s.client == nil {
+		return nil
+	}
+
+	return s.client.Del(ctx, key).Err()
+}
+
+// InvalidateByPrefix deletes all cache entries matching a prefix pattern.
+// For example: "GET:/shelters:" will invalidate all GET requests cached for /shelters endpoints.
+func (s *Store) InvalidateByPrefix(ctx context.Context, prefix string) error {
+	if !s.enabled || s.client == nil {
+		return nil
+	}
+
+	// Use SCAN to find keys matching the pattern and delete them
+	iter := s.client.Scan(ctx, 0, prefix+"*", 0).Iterator()
+	for iter.Next(ctx) {
+		key := iter.Val()
+		if err := s.client.Del(ctx, key).Err(); err != nil {
+			return err
+		}
+	}
+
+	return iter.Err()
+}
+
 // Close closes the Redis client.
 func (s *Store) Close() error {
 	if !s.enabled || s.client == nil {

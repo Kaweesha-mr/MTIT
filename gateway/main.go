@@ -167,6 +167,7 @@ func (t *serviceTarget) handler(w http.ResponseWriter, r *http.Request) {
 
 	logRequest(r, t.prefix, recorder.status, time.Since(startTime), false, false)
 
+	// Cache GET responses
 	if useCache && recorder.status >= http.StatusOK && recorder.status < http.StatusBadRequest {
 		entry := &cache.Entry{
 			Status: recorder.status,
@@ -175,6 +176,20 @@ func (t *serviceTarget) handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := cacheStore.Set(ctx, cacheKey, entry); err != nil {
 			log.Printf("cache set failed for %s: %v", cacheKey, err)
+		}
+	}
+
+	// Invalidate cache on successful mutations (POST, PUT, DELETE)
+	isMutation := r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete
+	isSuccessful := recorder.status >= http.StatusOK && recorder.status < http.StatusBadRequest
+	if cacheStore != nil && isMutation && isSuccessful {
+		// Invalidate all GET cache entries for this service prefix
+		// Example: POST /shelters/1 invalidates all GET:/shelters:* cache entries
+		invalidatePattern := fmt.Sprintf("GET:%s:*", t.prefix)
+		if err := cacheStore.InvalidateByPrefix(ctx, invalidatePattern); err != nil {
+			log.Printf("cache invalidation failed for pattern %s: %v", invalidatePattern, err)
+		} else {
+			log.Printf("cache invalidated for pattern %s after %s %s", invalidatePattern, r.Method, r.URL.Path)
 		}
 	}
 }
