@@ -443,7 +443,7 @@
 							"path": ["shelters"]
 						}
 					},
-					"description": "List shelters with status (REQUEST/OPEN/CLOSED) and location if set"
+					"description": "List all shelters with status, shelter location, and incident location\nReturns: incidentId, name, status, shelterLocation, incidentLocation"
 				},
 				{
 					"name": "Get Shelter By ID",
@@ -455,7 +455,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Get shelter details: status, location, capacity, occupancy"
+					"description": "Get shelter details including status, capacity, occupancy, shelter location, and incident location\nReturns: id, incidentId, name, capacity, status, currentOccupancy, shelterLocation, incidentLocation"
 				},
 				{
 					"name": "⏳ Get Shelter (REQUEST - Not Ready)",
@@ -467,7 +467,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Check shelter status before admin preparation. Should show status=REQUEST and location=null"
+					"description": "Check shelter status before admin preparation. Should show status=REQUEST and shelterLocation=null. Includes incidentLocation from the original incident."
 				},
 				{
 					"name": "🏢 Update Shelter - Set Location & OPEN",
@@ -476,7 +476,7 @@
 						"header": [{"key": "Content-Type", "value": "application/json"}],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"City Community Center\",\n    \"capacity\": 300,\n    \"location\": \"790 Oak St, Downtown\",\n    \"status\": \"OPEN\"\n}",
+							"raw": "{\n    \"capacity\": 300,\n    \"location\": \"790 Oak St, Downtown\",\n    \"status\": \"OPEN\"\n}",
 							"options": {"raw": {"language": "json"}}
 						},
 						"url": {
@@ -485,7 +485,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Admin prepares shelter:\n1. Set exact location near incident\n2. Adjust capacity\n3. Mark status as OPEN\nAfter this, fleet can create trips with this shelter as destination"
+					"description": "Admin opens shelter near incident. Name field is optional (not required to update).\n\n1. Set shelter location near incident\n2. Adjust capacity\n3. Mark status as OPEN\n\nResponse includes both shelterLocation (what you set) and incidentLocation (original incident). After this, fleet can create trips with this shelter as destination"
 				},
 				{
 					"name": "✅ Update Shelter - Back to REQUEST",

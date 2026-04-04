@@ -9,12 +9,21 @@ async function verifyIncident(incidentId) {
     if (status !== 'ACTIVE') {
       return { ok: false, code: 400, message: 'incident is not active' };
     }
-    return { ok: true };
+    return { ok: true, incident: resp.data };
   } catch (err) {
     if (err.response && err.response.status === 404) {
       return { ok: false, code: 400, message: 'incident not found' };
     }
     return { ok: false, code: 503, message: 'unable to verify incident' };
+  }
+}
+
+async function fetchIncident(incidentId) {
+  try {
+    const resp = await axios.get(`${config.incidentServiceUrl}/incidents/${incidentId}`);
+    return resp.data;
+  } catch (err) {
+    return null;
   }
 }
 
@@ -42,21 +51,60 @@ async function createShelter(payload) {
 }
 
 async function listShelters() {
-  const result = await pool.query('SELECT id, name, status, location FROM shelters ORDER BY id');
-  return result.rows;
+  const result = await pool.query('SELECT id, incident_id, name, status, location FROM shelters ORDER BY id');
+  
+  const shelters = [];
+  for (const row of result.rows) {
+    const incident = await fetchIncident(row.incident_id);
+    shelters.push({
+      id: row.id,
+      incidentId: row.incident_id,
+      name: row.name,
+      status: row.status,
+      shelterLocation: row.location,
+      incidentLocation: incident ? incident.location : null,
+    });
+  }
+  
+  return shelters;
 }
 
 async function getShelter(id) {
   const result = await pool.query(
-    'SELECT id, name, capacity, status, current_occupancy, location FROM shelters WHERE id = $1',
+    'SELECT id, incident_id, name, capacity, status, current_occupancy, location FROM shelters WHERE id = $1',
     [id],
   );
   if (result.rowCount === 0) {
     return null;
   }
   const row = result.rows[0];
+  const incident = await fetchIncident(row.incident_id);
+  
   return {
     id: row.id,
+    incidentId: row.incident_id,
+    name: row.name,
+    capacity: row.capacity,
+    status: row.status,
+    currentOccupancy: row.current_occupancy,
+    shelterLocation: row.location,
+    incidentLocation: incident ? incident.location : null,
+  };
+}
+
+async function getShelterRaw(id) {
+  const result = await pool.query(
+    'SELECT id, incident_id, name, capacity, status, current_occupancy, location FROM shelters WHERE id = $1',
+    [id],
+  );
+  if (result.rowCount === 0) {
+    return null;
+  }
+  const row = result.rows[0];
+  
+  return {
+    id: row.id,
+    incidentId: row.incident_id,
     name: row.name,
     capacity: row.capacity,
     status: row.status,
@@ -66,7 +114,7 @@ async function getShelter(id) {
 }
 
 async function updateOccupancy(id, currentOccupancy) {
-  const shelter = await getShelter(id);
+  const shelter = await getShelterRaw(id);
   if (!shelter) return { error: { code: 404, message: 'shelter not found' } };
 
   if (currentOccupancy < 0 || currentOccupancy > shelter.capacity) {
@@ -82,16 +130,16 @@ async function updateOccupancy(id, currentOccupancy) {
 }
 
 async function updateShelter(id, payload) {
-  const shelter = await getShelter(id);
+  const shelter = await getShelterRaw(id);
   if (!shelter) return { error: { code: 404, message: 'shelter not found' } };
 
-  const name = (payload.name || '').trim();
+  const name = (payload.name || '').trim() || shelter.name;
   const capacity = Number(payload.capacity);
   const status = (payload.status || '').trim().toUpperCase();
   const location = (payload.location || '').trim() || null;
 
-  if (!name || !capacity || capacity <= 0) {
-    return { error: { code: 400, message: 'name and capacity are required' } };
+  if (!capacity || capacity <= 0) {
+    return { error: { code: 400, message: 'capacity is required and must be greater than 0' } };
   }
 
   if (capacity < shelter.currentOccupancy) {
@@ -103,25 +151,29 @@ async function updateShelter(id, payload) {
   }
 
   const result = await pool.query(
-    'UPDATE shelters SET name = $1, capacity = $2, status = $3, location = $4 WHERE id = $5 RETURNING id, name, capacity, status, current_occupancy, location',
+    'UPDATE shelters SET name = $1, capacity = $2, status = $3, location = $4 WHERE id = $5 RETURNING id, incident_id, name, capacity, status, current_occupancy, location',
     [name, capacity, status || shelter.status, location, id],
   );
 
   const updated = result.rows[0];
+  const incident = await fetchIncident(updated.incident_id);
+  
   return {
     shelter: {
       id: updated.id,
+      incidentId: updated.incident_id,
       name: updated.name,
       capacity: updated.capacity,
       status: updated.status,
       currentOccupancy: updated.current_occupancy,
-      location: updated.location,
+      shelterLocation: updated.location,
+      incidentLocation: incident ? incident.location : null,
     },
   };
 }
 
 async function deleteShelter(id) {
-  const shelter = await getShelter(id);
+  const shelter = await getShelterRaw(id);
   if (!shelter) return { error: { code: 404, message: 'shelter not found' } };
 
   await pool.query('DELETE FROM shelters WHERE id = $1', [id]);

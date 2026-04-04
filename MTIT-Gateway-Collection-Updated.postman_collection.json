@@ -101,7 +101,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Shelter is created in REQUEST status with null location. Must be prepared before trips can use it."
+					"description": "Shelter is created in REQUEST status with null shelterLocation. Includes incidentLocation from the original incident. Must be prepared before trips can use it."
 				}
 			]
 		},
@@ -419,7 +419,7 @@
 							"path": ["shelters"]
 						}
 					},
-					"description": "Returns all shelters with status and location (if set)"
+					"description": "Returns all shelters with status, shelter location, and incident location\nFields: id, incidentId, name, status, shelterLocation, incidentLocation"
 				},
 				{
 					"name": "Get Shelter by ID",
@@ -432,7 +432,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Returns shelter details:\n- status: REQUEST (initial) or OPEN (ready) or CLOSED\n- location: null until admin sets it\n- capacity: can be updated"
+					"description": "Returns shelter details including status, capacity, occupancy, shelter location, and incident location\nFields: id, incidentId, name, capacity, status, currentOccupancy, shelterLocation, incidentLocation"
 				},
 				{
 					"name": "Create Shelter (Manual)",
@@ -470,7 +470,7 @@
 							"path": ["shelters", "{{shelterId}}"]
 						}
 					},
-					"description": "Admin prepares shelter for operations:\n✓ Set specific location near incident\n✓ Adjust capacity\n✓ Mark as OPEN when ready"
+					"description": "Admin prepares shelter (no incident ID needed, already linked):\n✓ Set specific location near incident\n✓ Adjust capacity\n✓ Mark as OPEN when ready\n\nResponse includes shelterLocation (what you set) and incidentLocation (original incident)"
 				},
 				{
 					"name": "Update Shelter - REQUEST (reject)",
